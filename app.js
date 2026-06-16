@@ -110,6 +110,39 @@ const optionalCreateFields = [
   "contactNotes",
 ];
 
+const createSections = [
+  {
+    title: "物件基本資料",
+    desc: "先填物件識別、位置與房型，方便列表搜尋。",
+    cls: "section-basic",
+    fields: ["propertyName", "city", "district", "address", "roomType"],
+  },
+  {
+    title: "租賃條件資料",
+    desc: "租金、押金、可入住日期與現況集中在這裡。",
+    cls: "section-rent",
+    fields: ["rent", "managementFee", "deposit", "availableDate", "currentStatus"],
+  },
+  {
+    title: "房客常問條件",
+    desc: "可寵、電梯、車位、開伙，都是前線查詢常用條件。",
+    cls: "section-conditions",
+    fields: ["petAllowed", "elevator", "carParking", "scooterParking", "cookingAllowed"],
+  },
+  {
+    title: "配案與注意事項",
+    desc: "放配案限制、特色與內部提醒，避免查詢時漏看。",
+    cls: "section-notes",
+    fields: ["matchingNotes", "features", "internalNotes"],
+  },
+  {
+    title: "聯絡資訊與責任歸屬",
+    desc: "詳細頁會顯示給同仁確認原登錄業務與聯絡方式。",
+    cls: "section-contact",
+    fields: ["ownerAgent", "ownerAgentPhone", "ownerAgentLine", "branch", "contactNotes"],
+  },
+];
+
 const filterFields = [
   "city",
   "district",
@@ -225,7 +258,16 @@ function badge(status) {
 
 function switchView(viewId) {
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === viewId));
-  document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.view === viewId));
+  document.querySelectorAll(".nav-btn").forEach((tab) => tab.classList.toggle("active", tab.dataset.view === viewId));
+  const titleMap = {
+    dashboardView: "首頁儀表板",
+    listView: "物件列表",
+    detailView: "物件詳細頁",
+    createView: "新增物件",
+    reviewView: "主管審核",
+  };
+  const title = document.querySelector("#pageTitle");
+  if (title) title.textContent = titleMap[viewId] || "中區房源快配站";
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -284,31 +326,36 @@ function renderAll() {
 
 function renderDashboard() {
   const stats = [
-    ["已上架物件數", countByStatus("已上架")],
-    ["待主管確認物件數", countByStatus("待主管確認")],
-    ["配案中物件數", countByStatus("配案中")],
-    ["已出租物件數", countByStatus("已出租")],
-    ["資料需補正物件數", countByStatus("資料需補正")],
-    ["總物件數", appState.properties.length],
+    ["已上架物件", countByStatus("已上架")],
+    ["待主管確認", countByStatus("待主管確認")],
+    ["配案中物件", countByStatus("配案中")],
+    ["已出租物件", countByStatus("已出租")],
+    ["資料需補正", countByStatus("資料需補正")],
+    ["全部物件", appState.properties.length],
   ];
 
   document.querySelector("#statCards").innerHTML = stats
-    .map(([label, count]) => `<article class="stat-card"><strong>${count}</strong><span>${label}</span></article>`)
+    .map(([label, count]) => `<article class="stat-card"><span>${label}</span><strong>${count}</strong></article>`)
     .join("");
 
   const recent = [...appState.properties]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     .slice(0, 5);
 
-  document.querySelector("#recentList").innerHTML = renderTable(recent, [
-    ["propertyName", fieldLabels.propertyName],
-    ["city", "縣市"],
-    ["district", "行政區"],
-    ["roomType", "房型"],
-    ["rent", "租金", formatRent],
-    ["propertyStatus", "物件狀態", badge],
-    ["ownerAgent", "原登錄業務"],
-  ]);
+  document.querySelector("#recentList").innerHTML = recent.length
+    ? recent
+        .map(
+          (item) => `
+        <div class="recent-item">
+          <div>
+            <h4>${escapeHtml(item.propertyName)}</h4>
+            <p>${escapeHtml(item.city)} ${escapeHtml(item.district)}｜${escapeHtml(item.roomType)}｜${formatRent(item.rent)}｜${escapeHtml(item.ownerAgent)}</p>
+          </div>
+          ${badge(item.propertyStatus)}
+        </div>`,
+        )
+        .join("")
+    : `<div class="empty-state">目前沒有資料</div>`;
 }
 
 function countByStatus(status) {
@@ -366,24 +413,45 @@ function getFilteredProperties() {
 
 function renderPropertyList() {
   const properties = getFilteredProperties();
-  const columns = [
-    ["propertyName", fieldLabels.propertyName],
-    ["city", "縣市"],
-    ["district", "行政區"],
-    ["roomType", "房型"],
-    ["rent", "租金", formatRent],
-    ["availableDate", "可入住日期", formatDate],
-    ["petAllowed", "可寵物"],
-    ["elevator", "電梯"],
-    ["carParking", "汽車位"],
-    ["scooterParking", "機車位"],
-    ["cookingAllowed", "開伙"],
-    ["propertyStatus", "狀態", badge],
-    ["ownerAgent", "原登錄業務"],
-    ["branch", "營業處"],
-    ["actions", "操作", (_, item) => `<button type="button" data-detail-id="${escapeHtml(item.propertyId)}">查看詳情</button>`],
-  ];
-  document.querySelector("#propertyList").innerHTML = renderTable(properties, columns);
+  document.querySelector("#propertyList").innerHTML = properties.length
+    ? properties
+        .map(
+          (item) => `
+      <article class="property-card">
+        <div class="property-top">
+          <div>
+            <h3>${escapeHtml(item.propertyName)}</h3>
+            <p class="address-short">${escapeHtml(item.city)} ${escapeHtml(item.district)}｜${escapeHtml(item.roomType)}</p>
+          </div>
+          <div class="rent">${formatRent(item.rent)}</div>
+        </div>
+
+        <div class="tag-row">
+          ${badge(item.propertyStatus)}
+          ${badge(item.petAllowed)}
+          ${badge(item.elevator)}
+          ${badge(`汽車：${formatValue(item.carParking)}`)}
+          ${badge(`機車：${formatValue(item.scooterParking)}`)}
+        </div>
+
+        <div class="meta-grid">
+          ${metaItem("可入住日期", formatDate(item.availableDate))}
+          ${metaItem("可開伙", item.cookingAllowed)}
+          ${metaItem("原登錄業務", item.ownerAgent)}
+          ${metaItem("所屬營業處", item.branch)}
+        </div>
+
+        <div class="card-actions">
+          <button class="primary-btn" type="button" data-detail-id="${escapeHtml(item.propertyId)}">查看詳情</button>
+        </div>
+      </article>`,
+        )
+        .join("")
+    : `<div class="empty-state">目前沒有符合條件的物件。</div>`;
+}
+
+function metaItem(label, value) {
+  return `<div class="meta"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></div>`;
 }
 
 function renderTable(rows, columns) {
@@ -405,63 +473,116 @@ function renderDetail(propertyId) {
   const item = appState.properties.find((property) => property.propertyId === propertyId);
   const box = document.querySelector("#propertyDetail");
   if (!item) {
-    box.innerHTML = `<div class="empty">找不到這筆物件資料</div>`;
+    box.innerHTML = `<div class="empty-state">找不到這筆物件資料</div>`;
     return;
   }
+  document.querySelector("#detailId").textContent = item.propertyId || "";
+  document.querySelector("#detailName").textContent = item.propertyName || "物件詳細資料";
+  document.querySelector("#detailSubtitle").textContent = `${formatValue(item.city)} ${formatValue(item.district)}｜${formatValue(item.roomType)}`;
 
   const lineValue = item.ownerAgentLine || "";
   const lineHtml = /^https?:\/\//.test(lineValue)
     ? `<a href="${escapeHtml(lineValue)}" target="_blank" rel="noopener">開啟 LINE 聯絡方式</a>`
     : `<span>${escapeHtml(lineValue || "未填寫")}</span>`;
 
-  const cards = fields
-    .map((key) => {
-      const value = key === "rent" || key === "managementFee" ? formatRent(item[key]) : key.includes("Date") || key.endsWith("At") ? formatDate(item[key]) : formatValue(item[key]);
-      return `<dl class="detail-card"><dt>${fieldLabels[key]}</dt><dd>${key === "propertyStatus" || key === "supervisorReviewStatus" ? badge(value) : escapeHtml(value)}</dd></dl>`;
-    })
-    .join("");
-
   box.innerHTML = `
-    <section class="detail-card contact-box">
-      <h3>聯絡原登錄業務</h3>
-      <p><strong>${escapeHtml(item.ownerAgent)}</strong></p>
-      <p>電話：${escapeHtml(item.ownerAgentPhone)}</p>
-      <p>LINE：${lineHtml}</p>
-      <p>注意事項：${escapeHtml(item.contactNotes)}</p>
-      <div class="contact-actions">
-        ${item.ownerAgentPhone ? `<a href="tel:${escapeHtml(item.ownerAgentPhone)}">撥打電話</a>` : ""}
+    <section class="detail-section">
+      <h4>物件基本資料</h4>
+      <div class="detail-grid">
+        ${detailItem("物件名稱", item.propertyName)}
+        ${detailItem("縣市", item.city)}
+        ${detailItem("行政區", item.district)}
+        ${detailItem("物件地址", item.address, "detail-span")}
+        ${detailItem("房型", item.roomType)}
+        ${detailItem("租金", formatRent(item.rent))}
+        ${detailItem("管理費", item.managementFee)}
+        ${detailItem("押金條件", item.deposit)}
+        ${detailItem("可入住日期", formatDate(item.availableDate))}
+        ${detailItem("物件現況", item.currentStatus)}
       </div>
     </section>
-    <div class="detail-grid">${cards}</div>
+
+    <section class="detail-section">
+      <h4>房客常問條件</h4>
+      <div class="tag-row">
+        ${badge(item.petAllowed)}
+        ${badge(item.elevator)}
+        ${badge(`汽車：${formatValue(item.carParking)}`)}
+        ${badge(`機車：${formatValue(item.scooterParking)}`)}
+        ${badge(`開伙：${formatValue(item.cookingAllowed)}`)}
+      </div>
+    </section>
+
+    <section class="detail-section">
+      <h4>配案與內部資訊</h4>
+      <div class="note-box"><strong>可配案條件／注意事項</strong><br>${escapeHtml(item.matchingNotes)}</div>
+      <div class="note-box"><strong>物件特色</strong><br>${escapeHtml(item.features)}</div>
+      <div class="note-box"><strong>內部備註</strong><br>${escapeHtml(item.internalNotes)}</div>
+    </section>
+
+    <section class="detail-section">
+      <h4>原登錄業務聯絡資訊</h4>
+      <div class="detail-grid">
+        ${detailItem("原登錄業務", item.ownerAgent, "contact-box")}
+        ${detailItem("原登錄業務電話", item.ownerAgentPhone, "contact-box")}
+        <div class="detail-item contact-box"><small>原登錄業務 LINE 聯絡方式</small><strong>${lineHtml}</strong></div>
+        ${detailItem("聯絡注意事項", item.contactNotes, "contact-box detail-span")}
+        ${detailItem("所屬營業處", item.branch, "contact-box")}
+      </div>
+    </section>
+
+    <section class="detail-section">
+      <h4>審核與系統狀態</h4>
+      <div class="detail-grid">
+        ${detailItem("主管確認狀態", item.supervisorReviewStatus)}
+        ${detailItem("主管備註", item.supervisorNotes || "無")}
+        ${detailItem("物件狀態", item.propertyStatus)}
+        ${detailItem("建立時間", formatDate(item.createdAt))}
+        ${detailItem("最後更新時間", formatDate(item.updatedAt))}
+      </div>
+    </section>
   `;
+}
+
+function detailItem(label, value, extraClass = "") {
+  return `<div class="detail-item ${extraClass}"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></div>`;
 }
 
 function renderCreateForm() {
   const form = document.querySelector("#createForm");
   if (form.dataset.ready === "true") return;
-  const createFields = [...requiredCreateFields, ...optionalCreateFields];
-  form.innerHTML = createFields.map(renderCreateField).join("");
+  form.innerHTML = createSections
+    .map(
+      (section) => `
+      <section class="form-section ${section.cls}">
+        <div class="form-section-header">
+          <h4>${section.title}</h4>
+          <p>${section.desc}</p>
+        </div>
+        <div class="form-grid">${section.fields.map(renderCreateField).join("")}</div>
+      </section>`,
+    )
+    .join("");
   form.dataset.ready = "true";
 }
 
 function renderCreateField(name) {
   const required = requiredCreateFields.includes(name);
-  const labelClass = required ? "required" : "";
-  const wide = ["address", "deposit"].includes(name) ? "field-wide" : "";
-  const full = ["matchingNotes", "features", "internalNotes", "contactNotes"].includes(name) ? "field-full" : "";
+  const mark = required ? " <b>*</b>" : "";
+  const wide = ["address", "matchingNotes", "features", "internalNotes", "contactNotes"].includes(name) ? "span-2" : "";
 
   if (options[name]) {
-    return `<div class="field ${wide} ${full}"><label class="${labelClass}" for="${name}">${fieldLabels[name]}</label><select id="${name}" name="${name}" ${required ? "required" : ""}><option value="">請選擇</option>${options[name]
+    return `<label class="${wide}" for="${name}">${fieldLabels[name]}${mark}<select id="${name}" name="${name}" ${required ? "required" : ""}><option value="">請選擇</option>${options[name]
       .map((item) => `<option value="${item}">${item}</option>`)
-      .join("")}</select></div>`;
+      .join("")}</select></label>`;
   }
 
   if (["matchingNotes", "features", "internalNotes", "contactNotes"].includes(name)) {
-    return `<div class="field ${full}"><label class="${labelClass}" for="${name}">${fieldLabels[name]}</label><textarea id="${name}" name="${name}" ${required ? "required" : ""}></textarea></div>`;
+    return `<label class="${wide}" for="${name}">${fieldLabels[name]}${mark}<textarea id="${name}" name="${name}" ${required ? "required" : ""}></textarea></label>`;
   }
 
-  const type = name === "rent" || name === "managementFee" ? "number" : name === "availableDate" ? "date" : "text";
-  return `<div class="field ${wide}"><label class="${labelClass}" for="${name}">${fieldLabels[name]}</label><input id="${name}" name="${name}" type="${type}" ${required ? "required" : ""} /></div>`;
+  const type = name === "rent" ? "number" : name === "availableDate" ? "date" : "text";
+  return `<label class="${wide}" for="${name}">${fieldLabels[name]}${mark}<input id="${name}" name="${name}" type="${type}" ${required ? "required" : ""} /></label>`;
 }
 
 async function submitCreate(event) {
@@ -497,7 +618,7 @@ function renderReviewList() {
 
   const list = document.querySelector("#reviewList");
   if (!rows.length) {
-    list.innerHTML = `<div class="empty">目前沒有需要審核的物件</div>`;
+    list.innerHTML = `<div class="empty-state">目前沒有需要審核的物件</div>`;
     return;
   }
 
@@ -505,43 +626,39 @@ function renderReviewList() {
     .map(
       (item) => `
       <article class="review-card">
-        <div class="review-head">
+        <div class="review-card-head">
           <div>
-            <h3>${escapeHtml(item.propertyName)}</h3>
+            <h4>${escapeHtml(item.propertyName)}</h4>
             <p class="muted">${escapeHtml(item.propertyId)}｜${escapeHtml(item.city)} ${escapeHtml(item.district)}｜${escapeHtml(item.branch)}</p>
           </div>
-          <div>${badge(item.supervisorReviewStatus)} ${badge(item.propertyStatus)}</div>
+          <div class="tag-row">${badge(item.supervisorReviewStatus)} ${badge(item.propertyStatus)}</div>
         </div>
-        <div class="review-summary">
-          ${reviewSummary("地址", item.address)}
-          ${reviewSummary("房型／租金", `${formatValue(item.roomType)}／${formatRent(item.rent)}`)}
-          ${reviewSummary("可入住", formatDate(item.availableDate))}
-          ${reviewSummary("現況", item.currentStatus)}
-          ${reviewSummary("寵物／電梯", `${formatValue(item.petAllowed)}／${formatValue(item.elevator)}`)}
-          ${reviewSummary("車位", `汽車：${formatValue(item.carParking)}／機車：${formatValue(item.scooterParking)}`)}
-          ${reviewSummary("開伙", item.cookingAllowed)}
-          ${reviewSummary("原登錄業務", `${formatValue(item.ownerAgent)} ${formatValue(item.ownerAgentPhone)}`)}
-          ${reviewSummary("LINE", item.ownerAgentLine)}
-          ${reviewSummary("配案條件", item.matchingNotes)}
-          ${reviewSummary("內部備註", item.internalNotes)}
-          ${reviewSummary("主管備註", item.supervisorNotes)}
+        <div class="review-info">
+          ${metaItem("地址", item.address)}
+          ${metaItem("房型／租金", `${formatValue(item.roomType)}／${formatRent(item.rent)}`)}
+          ${metaItem("可入住", formatDate(item.availableDate))}
+          ${metaItem("現況", item.currentStatus)}
+          ${metaItem("寵物／電梯", `${formatValue(item.petAllowed)}／${formatValue(item.elevator)}`)}
+          ${metaItem("車位", `汽車：${formatValue(item.carParking)}／機車：${formatValue(item.scooterParking)}`)}
+          ${metaItem("開伙", item.cookingAllowed)}
+          ${metaItem("原登錄業務", `${formatValue(item.ownerAgent)} ${formatValue(item.ownerAgentPhone)}`)}
         </div>
+        <div class="note-box"><strong>LINE：</strong>${escapeHtml(item.ownerAgentLine)}</div>
+        <div class="note-box"><strong>配案條件：</strong>${escapeHtml(item.matchingNotes)}</div>
+        <div class="note-box"><strong>內部備註：</strong>${escapeHtml(item.internalNotes)}</div>
         <label for="notes-${escapeHtml(item.propertyId)}">主管備註</label>
         <textarea id="notes-${escapeHtml(item.propertyId)}" data-notes-id="${escapeHtml(item.propertyId)}">${escapeRaw(item.supervisorNotes)}</textarea>
-        <div class="review-actions">
-          <button type="button" class="primary" data-review-id="${escapeHtml(item.propertyId)}" data-review-action="approve">通過上架</button>
-          <button type="button" data-review-id="${escapeHtml(item.propertyId)}" data-review-action="revise">退回補正</button>
-          <button type="button" class="danger" data-review-id="${escapeHtml(item.propertyId)}" data-review-action="reject">不通過</button>
-          <button type="button" data-review-id="${escapeHtml(item.propertyId)}" data-review-action="pause">暫停配案</button>
+        <div class="review-actions-row">
+          <button type="button" class="success-btn" data-review-id="${escapeHtml(item.propertyId)}" data-review-action="approve">通過上架</button>
+          <button type="button" class="warning-btn" data-review-id="${escapeHtml(item.propertyId)}" data-review-action="revise">退回補正</button>
+          <button type="button" class="danger-btn" data-review-id="${escapeHtml(item.propertyId)}" data-review-action="reject">不通過</button>
+          <button type="button" class="secondary-btn" data-review-id="${escapeHtml(item.propertyId)}" data-review-action="pause">暫停配案</button>
+          <button type="button" class="ghost-btn" data-detail-id="${escapeHtml(item.propertyId)}">查看詳細</button>
         </div>
       </article>
     `,
     )
     .join("");
-}
-
-function reviewSummary(label, value) {
-  return `<div><span>${label}</span>${escapeHtml(value)}</div>`;
 }
 
 async function submitReview(propertyId, reviewAction) {
