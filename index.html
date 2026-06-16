@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>中區房源快配站</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="apiNotice" class="notice notice-warning hidden">
+      尚未設定 Apps Script API_URL，請先依照 README 完成部署設定。
+    </div>
+
+    <main id="loginView" class="login-shell">
+      <section class="login-panel">
+        <p class="eyebrow">v0.2 內部測試版</p>
+        <h1>中區房源快配站</h1>
+        <p class="muted">內部測試版，請輸入共用密碼</p>
+        <form id="loginForm" class="stack">
+          <label for="passwordInput">共用密碼</label>
+          <input id="passwordInput" type="password" autocomplete="current-password" required />
+          <button type="submit" class="primary">進入系統</button>
+          <p id="loginMessage" class="form-message"></p>
+        </form>
+      </section>
+    </main>
+
+    <div id="appShell" class="app-shell hidden">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GitHub Pages + Google Sheets 測試版</p>
+          <h1>中區房源快配站</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="refreshButton" type="button">重新讀取</button>
+          <button id="logoutButton" type="button" class="ghost">登出</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="主要功能">
+        <button type="button" class="tab active" data-view="dashboardView">首頁</button>
+        <button type="button" class="tab" data-view="listView">物件列表</button>
+        <button type="button" class="tab" data-view="createView">新增物件</button>
+        <button type="button" class="tab" data-view="reviewView">主管審核</button>
+      </nav>
+
+      <div id="globalMessage" class="notice hidden"></div>
+
+      <section id="dashboardView" class="view active">
+        <div class="section-title">
+          <h2>首頁／儀表板</h2>
+          <p class="muted">統計會依 Google Sheets 回傳資料即時計算。</p>
+        </div>
+        <div id="statCards" class="stat-grid"></div>
+        <section class="panel">
+          <h3>最近新增物件</h3>
+          <div id="recentList" class="table-wrap"></div>
+        </section>
+      </section>
+
+      <section id="listView" class="view">
+        <div class="section-title">
+          <h2>物件列表</h2>
+          <button id="clearFiltersButton" type="button">清除篩選</button>
+        </div>
+        <form id="filterForm" class="filters"></form>
+        <div id="propertyList" class="table-wrap"></div>
+      </section>
+
+      <section id="detailView" class="view">
+        <div class="section-title">
+          <h2>物件詳細資料</h2>
+          <button type="button" data-view-target="listView">回列表</button>
+        </div>
+        <div id="propertyDetail"></div>
+      </section>
+
+      <section id="createView" class="view">
+        <div class="section-title">
+          <h2>新增物件</h2>
+          <p class="muted">送出後會由 Apps Script 產生物件編號與建立時間。</p>
+        </div>
+        <form id="createForm" class="form-grid"></form>
+        <div class="form-actions">
+          <button id="createSubmitButton" form="createForm" type="submit" class="primary">送出新增</button>
+          <button id="resetCreateButton" type="button">清空表單</button>
+        </div>
+      </section>
+
+      <section id="reviewView" class="view">
+        <div class="section-title">
+          <h2>主管審核</h2>
+          <p class="muted">審核成功後會更新 Google Sheets 並重新讀取資料。</p>
+        </div>
+        <div id="reviewList" class="review-list"></div>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
