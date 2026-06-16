@@ -1,4 +1,4 @@
-const API_URL = "請貼上 Apps Script Web App URL";
+const API_URL = "https://script.google.com/macros/s/AKfycbxMy029focRumJnw0woRMUtD3i59Sn4TQK1eM42Tvp2mLrH5zaLK5ggrKwxO7eqHM8/exec";
 
 const SESSION_AUTH_KEY = "fastmatch_v02_authenticated";
 const SESSION_PASSWORD_KEY = "fastmatch_v02_password";
